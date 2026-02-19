@@ -12,6 +12,37 @@ PBKDF2_ITERS = 150_000  # reasonable baseline; tune as needed
 
 SESSION_TTL_SECONDS = 3600  # 1 hour
 
+def _parse_cookies(cookie_header: str) -> dict:
+    cookies = {}
+    for part in (cookie_header or "").split(";"):
+        if "=" in part:
+            k, v = part.strip().split("=", 1)
+            cookies[k] = v
+    return cookies
+
+async def _require_user_id(self, request):
+    cookies = _parse_cookies(request.headers.get("cookie", ""))
+    token = cookies.get("session")
+    if not token:
+        return None
+
+    token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    row = await self.env.DB.prepare(
+        """
+        SELECT sessions.user_id
+        FROM sessions
+        WHERE sessions.token_hash = ?
+          AND sessions.expires_at > datetime('now')
+        """
+    ).bind(token_hash).first()
+
+    if row is None:
+        return None
+
+    row = row.to_py()
+    return row["user_id"]
+
 def _hash_password(password: str) -> str:
     # Store as: pbkdf2_sha256$iters$salt_b64$dk_b64
     salt = secrets.token_bytes(16)
@@ -61,6 +92,12 @@ class Default(WorkerEntrypoint):
         
         if method == "GET" and url.endswith("/api/me"):
             return await self._me(request)
+
+        if url.endswith("/api/todos"):
+            if method == "POST":
+                return await self._create_todo(request)
+            if method == "GET":
+                return await self._list_todos(request)
 
 
         return Response("Not Found", status=404)
@@ -150,6 +187,65 @@ class Default(WorkerEntrypoint):
         cookie = f"session={token}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age={SESSION_TTL_SECONDS}"
         return Response.json({"ok": True}, headers={"Set-Cookie": cookie})
 
+    async def _create_todo(self, request):
+        user_id = await _require_user_id(self, request)
+        if not user_id:
+            return Response("Unauthorized", status=401)
+
+        ct = request.headers.get("content-type", "")
+        if "application/json" not in ct:
+            return Response("Unsupported Media Type", status=415)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return Response("Invalid JSON body", status=400)
+
+        text = (body.get("text") or "").strip()
+        if not text:
+            return Response("Missing 'text'", status=400)
+
+        # Insert
+        res = await self.env.DB.prepare(
+            "INSERT INTO todos (user_id, text) VALUES (?, ?)"
+        ).bind(user_id, text).run()
+
+        # D1 run() result is often a JsProxy; convert defensively
+        res = res.to_py() if hasattr(res, "to_py") else res
+
+        todo_id = res.get("meta", {}).get("last_row_id")
+        return Response.json({"id": todo_id, "text": text, "completed": False}, status=201)
+
+    async def _list_todos(self, request):
+        user_id = await _require_user_id(self, request)
+        if not user_id:
+            return Response("Unauthorized", status=401)
+
+        # List newest first
+        result = await self.env.DB.prepare(
+            """
+            SELECT id, text, completed, created_at
+            FROM todos
+            WHERE user_id = ?
+            ORDER BY created_at DESC, id DESC
+            """
+        ).bind(user_id).all()
+
+        result = result.to_py() if hasattr(result, "to_py") else result
+        rows = result.get("results", [])
+
+        # Normalize completed 0/1 -> bool
+        todos = [
+            {
+                "id": r["id"],
+                "text": r["text"],
+                "completed": bool(r["completed"]),
+                "created_at": r["created_at"],
+            }
+            for r in rows
+        ]
+
+        return Response.json({"todos": todos})
 
     async def _me(self, request):
 

@@ -26,8 +26,13 @@
           <button id="logoutBtn">Logout</button>
         </div>
 
-        <h2>Your todos</h2>
-        <p>(coming next)</p>
+        <form id="todoForm">
+          <input id="todoText" placeholder="Add a todo..." />
+          <button type="submit">Add</button>
+        </form>
+
+        <pre id="todoError" class="error"></pre>
+        <ul id="todoList"></ul>
       </div>
     </div>
 

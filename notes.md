@@ -33,3 +33,5 @@ TODO:
 
 Rough notes: 
 1. When connecting a project to a GitHub repo that hasn't been initialized yet (no main branch), the error is vague about a bad request body. Could be more descriptive. 
+
+2. It's maybe a little annoying to have to manually create the migrations each time, then apply them locally, then apply then remotely, would be cool to be able to perform the migrations on git push. 
