@@ -18,9 +18,17 @@ Ok, let's just fucking send it.
 
 1. Make worker reply with request contents :check:
 2. Create API for account creation 
-    a. Let's make a database. 
-3. Create API for login, from then onwards the user will be authenticated by their token. 
+    a. Let's make a database. :check: 
+3. Create API for login, from then onwards the user will be authenticated by their token. :check: 
+    
  
+
+
+TODO: 
+    1. Add auto cleanup of expired sessions 
+    2. add POST /logout 
+    3. We want a todo app right, so let's do some shit. 
+        a. Front end for logging in. 
 
 
 Rough notes: 

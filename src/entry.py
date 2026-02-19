@@ -53,13 +53,13 @@ class Default(WorkerEntrypoint):
         method = request.method.upper()
 
         # crude routing (fine for now)
-        if method == "POST" and url.endswith("/users"):
+        if method == "POST" and url.endswith("/api//users"):
             return await self._create_user(request)
 
-        if method == "POST" and url.endswith("/login"):
+        if method == "POST" and url.endswith("/api/login"):
             return await self._login(request)
         
-        if method == "GET" and url.endswith("/me"):
+        if method == "GET" and url.endswith("/api/me"):
             return await self._me(request)
 
 

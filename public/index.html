@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Todo</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <h1>Todo</h1>
+
+      <div id="loginView">
+        <h2>Login</h2>
+        <form id="loginForm">
+          <input id="username" placeholder="username" autocomplete="username" />
+          <input id="password" placeholder="password" type="password" autocomplete="current-password" />
+          <button type="submit">Log in</button>
+        </form>
+        <pre id="loginError" class="error"></pre>
+      </div>
+
+      <div id="mainView" style="display:none;">
+        <div class="row">
+          <div id="greeting"></div>
+          <button id="logoutBtn">Logout</button>
+        </div>
+
+        <h2>Your todos</h2>
+        <p>(coming next)</p>
+      </div>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
