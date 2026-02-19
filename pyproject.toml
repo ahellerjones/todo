@@ -12,3 +12,9 @@ dependencies = [
 dev = [
     "workers-py"
 ]
+
+
+[[d1_databases]]
+binding = "DB"
+database_name = "todo-db"
+database_id = "0e0892f8-d69c-4605-b79e-acef70ebc478"

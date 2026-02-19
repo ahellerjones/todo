@@ -16,8 +16,9 @@ Ooo, bindings are inprocess access, not REST APIs. Cool.
 
 Ok, let's just fucking send it. 
 
-1. Make worker reply with request contents
+1. Make worker reply with request contents :check:
 2. Create API for account creation 
+    a. Let's make a database. 
 3. Create API for login, from then onwards the user will be authenticated by their token. 
  
 
