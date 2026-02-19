@@ -16,11 +16,9 @@ Ooo, bindings are inprocess access, not REST APIs. Cool.
 
 Ok, let's just fucking send it. 
 
-Make a worker endpoint which takes a request with userID and responds with hello userID 
-
-
-From there, create a user, store it in a db, 
-Then make some sort of auth.  
+1. Make worker reply with request contents
+2. Create API for account creation 
+3. Create API for login, from then onwards the user will be authenticated by their token. 
  
 
 
