@@ -30,7 +30,7 @@
           "database_name": "todo-db",
           "database_id": "0e0892f8-d69c-4605-b79e-acef70ebc478"
         }
-    ]
+    ],
 	/**
 	 * Environment Variables
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
