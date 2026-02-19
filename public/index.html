@@ -10,15 +10,30 @@
     <div id="app">
       <h1>Todo</h1>
 
-      <div id="loginView">
-        <h2>Login</h2>
-        <form id="loginForm">
-          <input id="username" placeholder="username" autocomplete="username" />
-          <input id="password" placeholder="password" type="password" autocomplete="current-password" />
-          <button type="submit">Log in</button>
-        </form>
-        <pre id="loginError" class="error"></pre>
-      </div>
+        <div id="loginView">
+          <h2>Login</h2>
+
+          <form id="loginForm">
+            <input id="username" placeholder="username" autocomplete="username" />
+            <input id="password" placeholder="password" type="password" autocomplete="current-password" />
+            <button type="submit">Log in</button>
+          </form>
+
+          <button id="showSignupBtn" type="button" style="margin-top:10px; width:100%;">
+            Create account
+          </button>
+
+          <form id="signupForm" style="display:none; margin-top:12px;">
+            <input id="newUsername" placeholder="new username" autocomplete="username" />
+            <input id="newPassword" placeholder="new password" type="password" autocomplete="new-password" />
+            <button type="submit" style="width:100%;">Sign up</button>
+            <button id="cancelSignupBtn" type="button" style="width:100%; margin-top:8px; background:#6b7280;">
+              Cancel
+            </button>
+          </form>
+
+          <pre id="loginError" class="error"></pre>
+        </div>
 
       <div id="mainView" style="display:none;">
         <div class="row">

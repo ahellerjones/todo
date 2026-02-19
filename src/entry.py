@@ -2,6 +2,7 @@ import base64
 import hashlib
 import hmac
 import secrets
+import re
 from datetime import datetime, timedelta, timezone
 # from pyodide.ffi import to_py
 
@@ -40,7 +41,7 @@ async def _require_user_id(self, request):
     if row is None:
         return None
 
-    row = row.to_py()
+    row = row.to_py() if hasattr(row, "to_py") else row
     return row["user_id"]
 
 def _hash_password(password: str) -> str:
@@ -83,8 +84,19 @@ class Default(WorkerEntrypoint):
         url = request.url  # string
         method = request.method.upper()
 
+        if method == "POST" and url.endswith("/api/logout"):
+            return await self._logout(request)
+        # Routing for modifying the todos
+        m = re.match(r".*/api/todos/(\d+)$", url)
+        if m:
+            todo_id = int(m.group(1))
+            if method == "PATCH":
+                return await self._update_todo(request, todo_id)
+            if method == "DELETE":
+                return await self._delete_todo(request, todo_id)
+
         # crude routing (fine for now)
-        if method == "POST" and url.endswith("/api//users"):
+        if method == "POST" and url.endswith("/api/users"):
             return await self._create_user(request)
 
         if method == "POST" and url.endswith("/api/login"):
@@ -155,11 +167,11 @@ class Default(WorkerEntrypoint):
             "SELECT id, password_hash FROM users WHERE username = ?"
         ).bind(username).first()
 
-        row = row.to_py()  # <-- convert JsProxy -> Python dict
+        row = row.to_py() if hasattr(row, "to_py") else row
 
         if not row or not _verify_password(row["password_hash"], password):
             # Keep message generic
-            return Response("Invalid credentials", status=401)
+            return Response.json({"error": "Invalid credentials"}, status=401)
 
         user_id = row["id"]
 
@@ -281,4 +293,101 @@ class Default(WorkerEntrypoint):
 
         return Response.json({
             "message": f"Hello, {row['username']}!"
+        })
+
+    async def _update_todo(self, request, todo_id: int):
+        user_id = await _require_user_id(self, request)
+        if not user_id:
+            return Response("Unauthorized", status=401)
+
+        ct = request.headers.get("content-type", "")
+        if "application/json" not in ct:
+            return Response("Unsupported Media Type", status=415)
+
+        try:
+            body = await request.json()
+        except Exception:
+            return Response("Invalid JSON body", status=400)
+
+        # Allow partial updates
+        new_text = body.get("text", None)
+        completed = body.get("completed", None)
+
+        sets = []
+        args = []
+
+        if new_text is not None:
+            new_text = (new_text or "").strip()
+            if not new_text:
+                return Response("Invalid 'text'", status=400)
+            sets.append("text = ?")
+            args.append(new_text)
+
+        if completed is not None:
+            sets.append("completed = ?")
+            args.append(1 if bool(completed) else 0)
+
+        if not sets:
+            return Response("No fields to update", status=400)
+
+        args.extend([todo_id, user_id])
+
+        res = await self.env.DB.prepare(
+            f"""
+            UPDATE todos
+            SET {", ".join(sets)}
+            WHERE id = ? AND user_id = ?
+            """
+        ).bind(*args).run()
+
+        res = res.to_py() if hasattr(res, "to_py") else res
+        changed = res.get("meta", {}).get("changes", 0)
+        if changed == 0:
+            return Response("Not Found", status=404)
+
+        return Response.json({"ok": True})
+
+    async def _delete_todo(self, request, todo_id: int):
+        user_id = await _require_user_id(self, request)
+        if not user_id:
+            return Response("Unauthorized", status=401)
+
+        res = await self.env.DB.prepare(
+            "DELETE FROM todos WHERE id = ? AND user_id = ?"
+        ).bind(todo_id, user_id).run()
+
+        res = res.to_py() if hasattr(res, "to_py") else res
+        changed = res.get("meta", {}).get("changes", 0)
+        if changed == 0:
+            return Response("Not Found", status=404)
+
+        return Response("", status=204)
+
+    async def _logout(self, request):
+        import hashlib
+
+        cookie_header = request.headers.get("cookie", "")
+        cookies = {}
+        for part in cookie_header.split(";"):
+            if "=" in part:
+                k, v = part.strip().split("=", 1)
+                cookies[k] = v
+
+        token = cookies.get("session")
+        if token:
+            token_hash = hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+            await self.env.DB.prepare(
+                "DELETE FROM sessions WHERE token_hash = ?"
+            ).bind(token_hash).run()
+
+        # Clear cookie in browser
+        clear_cookie = (
+            "session=; "
+            "HttpOnly; Secure; SameSite=Lax; Path=/; "
+            "Max-Age=0"
+        )
+
+        return Response("", status=204, headers={
+            "Set-Cookie": clear_cookie
         })
